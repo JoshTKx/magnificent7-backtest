@@ -1,0 +1,1 @@
+# magnificent7-backtest
