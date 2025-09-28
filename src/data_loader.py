@@ -14,15 +14,19 @@ class DataLoader():
             'NVDA': '1999-01-22',
         }
 
-    def fetch_single_stock(self, symbol, interval = '1d'):
+    def fetch_single_stock(self, symbol , interval = '1d', start = '1981-01-01', end = None):
         if symbol not in self.ipo_dates:
             raise ValueError(f"Ticker {symbol} not found in IPO dates.")
+        
+        if end is not None and start >= end:
+            raise ValueError("Start date must be earlier than end date.")
         
         try: 
             ticker = yf.Ticker(symbol)
             ipo_date = self.ipo_dates.get(ticker.ticker)
-            data = ticker.history(start=ipo_date, interval=interval, auto_adjust=True)
-            print(f"Fetched {len(data)} rows for {ticker.ticker} starting from {ipo_date}")
+            start_date = max(start, ipo_date)
+            data = ticker.history(start=start_date, end = end, interval=interval, auto_adjust=True)
+            print(f"Fetched {len(data)} rows for {ticker.ticker} starting from {start_date} to {end if end else 'present'}")
             validated_data = self.validate_data(data, ticker.ticker)
             return validated_data
         except Exception as e:
@@ -62,10 +66,10 @@ class DataLoader():
 
         
 
-    def load_all_stocks(self, interval = '1d'):
+    def load_all_stocks(self, interval = '1d', start = '1981-01-01', end = None):
         all_data = {}
         for symbol in self.ipo_dates:
-            data = self.fetch_single_stock(symbol, interval)
+            data = self.fetch_single_stock(symbol, interval, start, end)
             if data is not None:
                 all_data[symbol] = data
         return all_data
@@ -73,7 +77,7 @@ class DataLoader():
     
 if __name__ == "__main__":
     loader = DataLoader()
-    data = loader.load_all_stocks(interval='1d')
+    data = loader.load_all_stocks(interval='1d', start='2000-01-01', end='2023-12-31')
     for symbol, df in data.items():
         print(f"{symbol}: {len(df)} rows")
         
