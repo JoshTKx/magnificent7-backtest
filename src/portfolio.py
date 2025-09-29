@@ -4,7 +4,7 @@ from datetime import date, timedelta
 
 class Portfolio:
     def __init__(self, initial_cash=1000000, commission=0.001, slippage = 0.0002, min_shares = 10):
-        self.inital_cash = initial_cash
+        self.initial_cash = initial_cash
         self.cash = initial_cash
         self.positions = {} # symbol -> number of shares
         self.share_cost = {} # symbol -> total cost of shares held
