@@ -27,7 +27,7 @@ class TechnicalIndicator:
         return new_data
         
     @staticmethod
-    def add_rsi_to_all( stock_data_dict):
+    def add_rsi_to_all(stock_data_dict):
 
         dict_with_rsi = {}
         for symbol, data in stock_data_dict.items():
@@ -37,7 +37,9 @@ class TechnicalIndicator:
         return dict_with_rsi
     
     @staticmethod
-    def generate_signals(data, rsi_buy_threshold=35, rsi_sell_threshold=65):
+    def generate_signals(stock_data_dict, rsi_buy_threshold=35, rsi_sell_threshold=65):
+        data = TechnicalIndicator.add_rsi_to_all(stock_data_dict)
+        
         if 'RSI' not in data.columns:
             print("RSI column not found in data. Cannot generate signals.")
             return data
