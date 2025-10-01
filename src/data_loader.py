@@ -67,17 +67,26 @@ class DataLoader():
         
 
     def load_all_stocks(self, interval = '1d', start = '1981-01-01', end = None):
-        all_data = {}
+        raw_data = {}
         for symbol in self.ipo_dates:
             data = self.fetch_single_stock(symbol, interval, start, end)
             if data is not None:
-                all_data[symbol] = data
-        return all_data
+                raw_data[symbol] = data
+        
+        all_indexes = [df.index for df in raw_data.values()]
+        master_calendar = all_indexes[0].union(*all_indexes[1:])
+        final_data = {}
+        for symbol, df in raw_data.items():
+            reindexed_df = df.reindex(master_calendar)
+            final_data[symbol] = reindexed_df
+        
+        print(f"Loaded data for {len(final_data)} stocks with unified calendar from {start} to {end if end else 'present'}.")
+        return final_data
     
     
 if __name__ == "__main__":
     loader = DataLoader()
-    data = loader.load_all_stocks(interval='1d', start='2000-01-01', end='2023-12-31')
+    data = loader.load_all_stocks(interval='1d', start='1981-01-01', end='2023-12-31')
     for symbol, df in data.items():
         print(f"{symbol}: {len(df)} rows")
         

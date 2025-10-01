@@ -3,8 +3,8 @@ from src.portfolio import Portfolio
 from src.indicator import TechnicalIndicator
 
 class BacktestEngine:
-    def __init__(self, portfolio, start_date = "1981-01-01", end_date = "2023-12-31", initial_cash = 1000000, commission = 0.001, slippage = 0.0002, min_transaction = 10):
-        self.portfolio = portfolio
+    def __init__(self, start_date = "1981-01-01", end_date = "2023-12-31", initial_cash = 1000000, commission = 0.001, slippage = 0.0002, min_transaction = 10):
+        self.portfolio = Portfolio(initial_cash, commission, slippage, min_transaction)
         self.start_date = start_date
         self.end_date = end_date
         self.initial_cash = initial_cash
@@ -12,6 +12,8 @@ class BacktestEngine:
         self.slippage = slippage
         self.min_transaction = min_transaction
         self.current_cash = initial_cash
+        self.historical_data = {}
+        self.historical_data_with_signals = {}
 
     def load_data(self):
         # Load historical data from the specified data source

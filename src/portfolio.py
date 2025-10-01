@@ -29,12 +29,18 @@ class Portfolio:
         self.trades = [] # list of trade records
         self.portfolio_value_history = [] # list of (date, total_value)
 
-    def get_investable_stocks(self, date):
+    def get_investable_stocks(self, date, price_data_dict):
         investable = []
-        date = str(date)
+        
         for symbol, ipo_date in self.target_stocks.items():
-            if date >= ipo_date:
-                investable.append(symbol)
+            if date < ipo_date:
+                continue
+    
+            if symbol in price_data_dict and date in price_data_dict[symbol].index:
+                close_price = price_data_dict[symbol].loc[date, 'Close']
+                if pd.notna(close_price) and close_price > 0:
+                    investable.append(symbol)  
+                    
         return investable
     
     def calculate_target_weights(self, investable=None):
@@ -116,9 +122,9 @@ class Portfolio:
         return priority_queue
     
     
-    def generate_pending_trades(self, closing_prices, rsi_signals, rsi_values, date):
+    def generate_pending_trades(self, closing_prices, rsi_signals, rsi_values, date, price_data_dict):
 
-        investable_stocks = self.get_investable_stocks(date)
+        investable_stocks = self.get_investable_stocks(date, price_data_dict)
         target_weight = self.calculate_target_weights(investable_stocks)
         current_weights = self.calculate_current_weights(closing_prices)
         total_portfolio_value = self.calculate_portfolio_value(closing_prices)

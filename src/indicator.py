@@ -1,14 +1,25 @@
+import pandas as pd
+import numpy as np
+
 class TechnicalIndicator:
 
     @staticmethod
     def calculate_rsi(data, window=14):
-        if data['Close'].isnull().any():
-            print("Data contains null values in 'Close' column. Cannot compute RSI.")
-            return data
 
         new_data = data.copy()
+        
+        valid_data = new_data.dropna(subset=['Close'])
 
-        price_changes = new_data['Close'].diff()
+        if valid_data.empty:
+            print(f"Warning: No valid data for RSI calculation.")
+            new_data['RSI'] = pd.NA 
+            return new_data
+
+        price_changes = valid_data['Close'].diff()
+
+        if price_changes.empty:
+            new_data['RSI'] = pd.NA
+            return new_data
 
         alpha = 1/ window
         gains = price_changes.where(price_changes > 0, 0.0)
@@ -23,7 +34,8 @@ class TechnicalIndicator:
         rsi = rsi.where(avg_loss != 0, 100)
         rsi = rsi.where(avg_gain != 0, 0)
 
-        new_data['RSI'] = rsi
+    
+        new_data['RSI'] = rsi.reindex(new_data.index, fill_value=pd.NA)
         return new_data
         
     @staticmethod
@@ -38,17 +50,21 @@ class TechnicalIndicator:
     
     @staticmethod
     def generate_signals(stock_data_dict, rsi_buy_threshold=35, rsi_sell_threshold=65):
-        data = TechnicalIndicator.add_rsi_to_all(stock_data_dict)
-        
-        if 'RSI' not in data.columns:
-            print("RSI column not found in data. Cannot generate signals.")
-            return data
+        dict_with_rsi = TechnicalIndicator.add_rsi_to_all(stock_data_dict)
 
-        new_data = data.copy()
-        new_data['Signal'] = 0
+        final_signal_dict = {}
+        for symbol, data in dict_with_rsi.items():
+            if 'RSI' not in data.columns:
+                final_signal_dict[symbol] = data
+                continue
 
-        new_data.loc[new_data['RSI'] < rsi_buy_threshold, 'Signal'] = 1
-        new_data.loc[new_data['RSI'] > rsi_sell_threshold, 'Signal'] = -1
+            new_data = data.copy()
+            new_data['Signal'] = 0
 
-        return new_data
+            new_data.loc[new_data['RSI'] < rsi_buy_threshold, 'Signal'] = 1
+            new_data.loc[new_data['RSI'] > rsi_sell_threshold, 'Signal'] = -1
+
+            final_signal_dict[symbol] = new_data
+
+        return final_signal_dict
 
