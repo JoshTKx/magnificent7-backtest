@@ -230,20 +230,44 @@ class Portfolio:
 
     def evaluate_performance(self):
         if not self.portfolio_value_history:
-            return 0, 0
+            return {}
+        
+        value_df = pd.DataFrame(self.portfolio_value_history, columns=['Total Value', 'Date'])
+        value_df['Date'] = pd.to_datetime(value_df['Date'])
+        value_df = value_df.drop_duplicates(subset=['Date'], keep='last').set_index('Date')['Total Value']
+
+        daily_returns = value_df.pct_change().dropna()
+        total_trading_days = (value_df.index[-1] - value_df.index[0]).days
+
+        
         
         initial_value = self.portfolio_value_history[0][0]
         final_value = self.portfolio_value_history[-1][0]
-        total_return = (final_value - initial_value) / initial_value if initial_value > 0 else 0
+        total_return = (final_value/ initial_value) - 1 if initial_value > 0 else 0
         num_days = (self.portfolio_value_history[-1][1] - self.portfolio_value_history[0][1]).days
         annualized_return = (1 + total_return) ** (252 / num_days) - 1 if num_days > 0 else 0
-        annualized_volatility = 0
-        maximum_drawdown = 0
-        sharpe_ratio = 0
+        annualized_volatility = daily_returns.std() * (252 ** 0.5) if not daily_returns.empty else 0
+        cummulative_max = value_df.cummax()
+        drawdown = (value_df / cummulative_max) - 1
+        maximum_drawdown = drawdown.min() if not drawdown.empty else 0
+        sharpe_ratio = (annualized_return / annualized_volatility) if annualized_volatility > 0 else 0
+
+        all_trade_pnls = []
+        for trade in self.trades:
+            for symbol, details in trade.items():
+                if symbol != 'Date' and 'P&L' in details:
+                    all_trade_pnls.append(details['P&L'])
+
+        realized_trades = len(all_trade_pnls)
+        total_num_trades = sum(len(trade) - 1 for trade in self.trades) 
         
-        total_num_trades = sum(len(trade) - 1 for trade in self.trades)  
-        avg_return_per_trade = total_return / total_num_trades if total_num_trades > 0 else 0
-        win_rate = 0
+        if realized_trades > 0:
+            avg_return_per_trade = sum(all_trade_pnls) / realized_trades # USD value
+            winning_trades = [pnl for pnl in all_trade_pnls if pnl > 0]
+            win_rate = len(winning_trades) / realized_trades
+        else:
+            avg_return_per_trade = 0
+            win_rate = 0.0
 
         metrics = {
             'Initial Value': initial_value,
@@ -254,7 +278,7 @@ class Portfolio:
             'Maximum Drawdown': maximum_drawdown,
             'Sharpe Ratio': sharpe_ratio,
             'Total Trades': total_num_trades,
-            'Avg Return per Trade': avg_return_per_trade,
+            'Avg Return per Trade': avg_return_per_trade, 
             'Win Rate': win_rate
         }
         return metrics
@@ -266,112 +290,3 @@ class Portfolio:
             
 
         
-if __name__ == "__main__":
-    
-    # --- 1. SETUP: INITIALIZE PORTFOLIO AND SIMULATE START DATE ---
-    
-    # Start Date: A date when some stocks are NOT investable (e.g., 2000-01-01)
-    # IPOs available by 2000-01-01: AAPL, MSFT, AMZN, NVDA (4 stocks)
-    # IPOs NOT available: GOOG, TSLA, META (3 stocks)
-    START_DATE = date(2000, 1, 1)
-    
-    portfolio = Portfolio(initial_cash=700000, commission=0.001, slippage=0.0002, min_shares=10)
-    
-    # Prices at the CLOSE of Day 1 (Execution Price for Buy is Day 2 OPEN)
-    day1_close_prices = {
-        'AAPL': 50.00, 'MSFT': 100.00, 'GOOG': 120.00, 'AMZN': 20.00, 
-        'META': 250.00, 'TSLA': 20.00, 'NVDA': 10.00
-    }
-    
-    # Simulate a universal BUY signal for all investable stocks
-    rsi_signals = {'AAPL': 1, 'MSFT': 1, 'GOOG': 1, 'AMZN': 1, 
-                   'META': 1, 'TSLA': 1, 'NVDA': 1}
-    rsi_values = {'AAPL': 30, 'MSFT': 30, 'GOOG': 30, 'AMZN': 30, 
-                  'META': 30, 'TSLA': 30, 'NVDA': 30}
-
-    # Prices at the OPEN of Day 2 (Execution Price)
-    day2_open_prices = {
-        'AAPL': 50.50, 'MSFT': 101.00, 'GOOG': 120.00, 'AMZN': 20.20, 
-        'META': 250.00, 'TSLA': 20.00, 'NVDA': 10.10
-    }
-    
-    print("="*70)
-    print(f"TESTING TARGET WEIGHT BALANCING: START DATE {START_DATE}")
-    print("="*70)
-
-    # --- 2. VERIFY INVESTABLE UNIVERSE & TARGET WEIGHT ---
-    
-    investable_stocks = portfolio.get_investable_stocks(START_DATE)
-    calculated_target_weight = portfolio.calculate_target_weights(investable_stocks)
-    
-    print(f"1. Investable Stocks (as of {START_DATE}): {investable_stocks}")
-    
-    # Expected: 4 stocks (AAPL, MSFT, AMZN, NVDA)
-    if len(investable_stocks) != 4:
-        print(f"   ERROR: Expected 4 investable stocks, found {len(investable_stocks)}")
-        # NOTE: Check your IPO dates if this fails.
-        
-    # Expected Target Weight: 1 / 4 = 0.25 (25%)
-    print(f"   Calculated Target Weight: {calculated_target_weight:.4f} (Expected: 0.2500)")
-    
-    # --- 3. GENERATE PENDING TRADES (DAY 1 SIGNAL) ---
-    
-    # The trade generation must calculate the required dollar value to allocate 25% to the 4 stocks.
-    
-    # Expected Initial Trade Value per stock: $700,000 / 4 = $175,000 (Gross Value)
-    
-    portfolio.generate_pending_trades(day1_close_prices, rsi_signals, rsi_values, START_DATE)
-    
-    print("\n2. Generating Pending Trades (Intent):")
-    
-    trade_summary = {}
-    for symbol, value in portfolio.pending_trade.items():
-        trade_summary[symbol] = round(value, 2)
-        
-    print(f"   Trade Intent Symbols: {list(trade_summary.keys())}")
-    print(f"   Trade Intent Values: {trade_summary}")
-
-    # --- 4. EXECUTE TRADES (DAY 2 EXECUTION) ---
-
-    EXECUTION_DATE = START_DATE + timedelta(days=1)
-    portfolio.execute_pending_trades(day2_open_prices, EXECUTION_DATE)
-    
-    # --- 5. VERIFY FINAL WEIGHTS ---
-    
-    final_weights = portfolio.calculate_current_weights(day2_open_prices)
-    final_value = portfolio.calculate_portfolio_value(day2_open_prices)
-
-    print("\n3. Verification (Post-Execution):")
-    print(f"   Final Portfolio Value: ${final_value:,.2f}")
-    print(f"   Remaining Cash: ${portfolio.cash:,.2f}")
-
-    print("\n   --- Final Positions and Weights ---")
-    
-    all_weights_ok = True
-    
-    for symbol in portfolio.target_stocks.keys():
-        weight = final_weights.get(symbol, 0)
-        
-        if symbol in investable_stocks:
-            # Check investable stocks: weight should be close to 25% (0.25)
-            target = calculated_target_weight
-            
-            status = "OK" if abs(weight - target) < 0.005 else "FAIL"
-            if status == "FAIL": all_weights_ok = False
-            
-            shares = portfolio.positions.get(symbol, 0)
-            print(f"   {symbol:<5}: Shares: {shares:<5} | Final Weight: {weight:.4f} (Target: {target:.4f}) -> {status}")
-            
-        else:
-            # Check un-investable stocks: weight should be 0%
-            status = "OK" if abs(weight) < 0.0001 else "FAIL"
-            if status == "FAIL": all_weights_ok = False
-            
-            print(f"   {symbol:<5}: Shares: 0     | Final Weight: {weight:.4f} (Target: 0.0000) -> {status} (Un-investable)")
-            
-    print("\n" + "="*70)
-    if all_weights_ok:
-        print("SUCCESS: Target Weight Balancing and IPO Filtering Passed.")
-    else:
-        print("FAILURE: Weights are not correctly balanced or IPO filter failed.")
-    print("="*70)
