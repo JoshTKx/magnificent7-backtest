@@ -1,6 +1,8 @@
+
 from src.data_loader import DataLoader
 from src.portfolio import Portfolio
 from src.indicator import TechnicalIndicator
+import pandas as pd
 
 class BacktestEngine:
     def __init__(self, start_date = "1981-01-01", end_date = "2023-12-31", initial_cash = 1000000, commission = 0.001, slippage = 0.0002, min_transaction = 10):
@@ -41,9 +43,50 @@ class BacktestEngine:
         return daily_signals, daily_rsi
 
     def run_backtest(self):
-        pass
+        stock_data_dict = self.load_data()
+        if not stock_data_dict:
+            print("No historical data available for backtesting.")
+            return None
+
+        master_calendar = stock_data_dict[next(iter(stock_data_dict))].index
+
+        for i, current_date in enumerate(master_calendar):
+            if i + 1 < len(master_calendar):
+                next_date = master_calendar[i + 1]
+            else:
+                break
+            
+            daily_closing_prices = self.extract_daily_prices(current_date, price_type='Close')
+            daily_signals, daily_rsi = self.extract_daily_signals(current_date)
+            
+
+            has_trades = self.portfolio.generate_pending_trades(daily_closing_prices, daily_rsi, daily_signals, current_date, stock_data_dict)
+
+            if has_trades:
+                daily_opening_prices = self.extract_daily_prices(next_date, price_type='Open')
+                self.portfolio.execute_pending_trades(daily_opening_prices, next_date)
+
+
 
 
 
     def evaluate_performance(self):
-        pass
+        metrics = self.portfolio.evaluate_performance()
+
+        print(f"Backtest completed from {self.start_date} to {self.end_date}.")
+        print(f"Initial Portfolio Value: ${metrics['Initial Value']:.2f}")
+        print(f"Final Portfolio Value: ${metrics['Final Value']:.2f}")
+        print(f"Total Return: {metrics['Total Return']*100:.2f}%")
+        print(f"Annualized Return: {metrics['Annualized Return']*100:.2f}%")
+        print(f"Annualized Volatility: {metrics['Annualized Volatility']*100:.2f}%")
+        print(f"Maximum Drawdown: {metrics['Maximum Drawdown']*100:.2f}%")
+        print(f"Sharpe Ratio: {metrics['Sharpe Ratio']:.2f}")
+        print(f"Total Trades Executed: {metrics['Total Trades']}")
+        print(f"Average Return per Trade: {metrics['Avg Return per Trade']*100:.2f}%")
+        print(f"Win Rate: {metrics['Win Rate']*100:.2f}%")
+        return metrics
+
+if __name__ == "__main__":
+    backtest = BacktestEngine(start_date="1981-01-01", end_date="2023-12-31", initial_cash=1000000)
+    backtest.run_backtest()
+    performance_metrics = backtest.evaluate_performance()

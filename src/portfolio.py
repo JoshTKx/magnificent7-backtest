@@ -32,11 +32,12 @@ class Portfolio:
     def get_investable_stocks(self, date, price_data_dict):
         investable = []
         
-        for symbol, ipo_date in self.target_stocks.items():
-            if date < ipo_date:
+        for symbol in self.target_stocks:
+
+            if symbol not in price_data_dict:
                 continue
-    
-            if symbol in price_data_dict and date in price_data_dict[symbol].index:
+            
+            if date in price_data_dict[symbol].index:
                 close_price = price_data_dict[symbol].loc[date, 'Close']
                 if pd.notna(close_price) and close_price > 0:
                     investable.append(symbol)  
@@ -56,7 +57,9 @@ class Portfolio:
         total_value = self.cash
         for symbol, shares in self.positions.items():
             if symbol in current_prices:
-                total_value += shares * current_prices[symbol]
+                price = current_prices[symbol]
+                if pd.notna(price) and price > 0:
+                    total_value += shares * current_prices[symbol]
         return total_value
 
     def calculate_current_weights(self, current_prices):
@@ -150,7 +153,7 @@ class Portfolio:
             
         self.pending_trade = pending_values_to_trade
 
-        return len(pending_values_to_trade) > 0
+        return len(self.pending_trade) > 0
     
 
     def calculate_trade_cash_flow(self, price, shares):
@@ -224,6 +227,39 @@ class Portfolio:
         self.pending_trade = {}
         self.trades.append(trade_record)
         self.portfolio_value_history.append((self.calculate_portfolio_value(opening_prices), date))
+
+    def evaluate_performance(self):
+        if not self.portfolio_value_history:
+            return 0, 0
+        
+        initial_value = self.portfolio_value_history[0][0]
+        final_value = self.portfolio_value_history[-1][0]
+        total_return = (final_value - initial_value) / initial_value if initial_value > 0 else 0
+        num_days = (self.portfolio_value_history[-1][1] - self.portfolio_value_history[0][1]).days
+        annualized_return = (1 + total_return) ** (252 / num_days) - 1 if num_days > 0 else 0
+        annualized_volatility = 0
+        maximum_drawdown = 0
+        sharpe_ratio = 0
+        
+        total_num_trades = sum(len(trade) - 1 for trade in self.trades)  
+        avg_return_per_trade = total_return / total_num_trades if total_num_trades > 0 else 0
+        win_rate = 0
+
+        metrics = {
+            'Initial Value': initial_value,
+            'Final Value': final_value,
+            'Total Return': total_return,
+            'Annualized Return': annualized_return,
+            'Annualized Volatility': annualized_volatility,
+            'Maximum Drawdown': maximum_drawdown,
+            'Sharpe Ratio': sharpe_ratio,
+            'Total Trades': total_num_trades,
+            'Avg Return per Trade': avg_return_per_trade,
+            'Win Rate': win_rate
+        }
+        return metrics
+
+
 
 
 

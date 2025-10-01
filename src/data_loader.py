@@ -1,5 +1,6 @@
 import yfinance as yf
-
+from functools import reduce
+import pandas as pd
 
 
 class DataLoader():
@@ -74,7 +75,7 @@ class DataLoader():
                 raw_data[symbol] = data
         
         all_indexes = [df.index for df in raw_data.values()]
-        master_calendar = all_indexes[0].union(*all_indexes[1:])
+        master_calendar = reduce(pd.Index.union, all_indexes)
         final_data = {}
         for symbol, df in raw_data.items():
             reindexed_df = df.reindex(master_calendar)
