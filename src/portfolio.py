@@ -56,10 +56,9 @@ class Portfolio:
     def calculate_portfolio_value(self, current_prices):
         total_value = self.cash
         for symbol, shares in self.positions.items():
-            if symbol in current_prices:
-                price = current_prices[symbol]
-                if pd.notna(price) and price > 0:
-                    total_value += shares * current_prices[symbol]
+            price = current_prices.get(symbol, 0)
+            if price is not None and pd.notna(price) and price > 0 and shares > 0:
+                total_value += shares * price
         return total_value
 
     def calculate_current_weights(self, current_prices):
@@ -241,7 +240,7 @@ class Portfolio:
 
         
         
-        initial_value = self.portfolio_value_history[0][0]
+        initial_value = self.initial_cash
         final_value = self.portfolio_value_history[-1][0]
         total_return = (final_value/ initial_value) - 1 if initial_value > 0 else 0
         num_days = (self.portfolio_value_history[-1][1] - self.portfolio_value_history[0][1]).days

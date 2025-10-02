@@ -60,7 +60,7 @@ class BacktestEngine:
             daily_signals, daily_rsi = self.extract_daily_signals(current_date)
             
 
-            has_trades = self.portfolio.generate_pending_trades(daily_closing_prices, daily_rsi, daily_signals, current_date, stock_data_dict)
+            has_trades = self.portfolio.generate_pending_trades(daily_closing_prices, daily_signals, daily_rsi, current_date, stock_data_dict)
 
             if has_trades:
                 daily_opening_prices = self.extract_daily_prices(next_date, price_type='Open')
@@ -82,11 +82,19 @@ class BacktestEngine:
         print(f"Maximum Drawdown: {metrics['Maximum Drawdown']*100:.2f}%")
         print(f"Sharpe Ratio: {metrics['Sharpe Ratio']:.2f}")
         print(f"Total Trades Executed: {metrics['Total Trades']}")
-        print(f"Average Return per Trade: {metrics['Avg Return per Trade']*100:.2f}%")
+        print(f"Average Return per Trade: {metrics['Avg Return per Trade']}")
         print(f"Win Rate: {metrics['Win Rate']*100:.2f}%")
         return metrics
 
 if __name__ == "__main__":
     backtest = BacktestEngine(start_date="1981-01-01", end_date="2023-12-31", initial_cash=1000000)
     backtest.run_backtest()
+    print("First 3 portfolio values:")
+    print(backtest.portfolio.portfolio_value_history[0:3])
+
+    print("\nFirst trade record:")
+    print(backtest.portfolio.trades[0])
+
+    print("\nSecond trade record:")
+    print(backtest.portfolio.trades[1])
     performance_metrics = backtest.evaluate_performance()
