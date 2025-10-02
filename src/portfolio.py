@@ -236,7 +236,7 @@ class Portfolio:
         value_df = value_df.drop_duplicates(subset=['Date'], keep='last').set_index('Date')['Total Value']
 
         daily_returns = value_df.pct_change().dropna()
-        total_trading_days = (value_df.index[-1] - value_df.index[0]).days
+        total_trading_days = len(value_df)
 
         
         
@@ -244,12 +244,14 @@ class Portfolio:
         final_value = self.portfolio_value_history[-1][0]
         total_return = (final_value/ initial_value) - 1 if initial_value > 0 else 0
         num_days = (self.portfolio_value_history[-1][1] - self.portfolio_value_history[0][1]).days
-        annualized_return = (1 + total_return) ** (252 / num_days) - 1 if num_days > 0 else 0
+        annualized_return = (1 + total_return) ** (252 / total_trading_days) - 1 if total_trading_days > 0 else 0
         annualized_volatility = daily_returns.std() * (252 ** 0.5) if not daily_returns.empty else 0
         cummulative_max = value_df.cummax()
         drawdown = (value_df / cummulative_max) - 1
         maximum_drawdown = drawdown.min() if not drawdown.empty else 0
-        sharpe_ratio = (annualized_return / annualized_volatility) if annualized_volatility > 0 else 0
+        risk_free_rate = 0.02
+        sharpe_ratio = (annualized_return - risk_free_rate) / annualized_volatility if annualized_volatility > 0 else 0
+        
 
         all_trade_pnls = []
         for trade in self.trades:
@@ -259,6 +261,7 @@ class Portfolio:
 
         realized_trades = len(all_trade_pnls)
         total_num_trades = sum(len(trade) - 1 for trade in self.trades) 
+        avg_pct_return_per_trade = (final_value / initial_value) ** (1 / total_num_trades) - 1 if total_num_trades > 0 else 0
         
         if realized_trades > 0:
             avg_return_per_trade = sum(all_trade_pnls) / realized_trades # USD value
@@ -277,7 +280,7 @@ class Portfolio:
             'Maximum Drawdown': maximum_drawdown,
             'Sharpe Ratio': sharpe_ratio,
             'Total Trades': total_num_trades,
-            'Avg Return per Trade': avg_return_per_trade, 
+            'Avg Return per Trade': avg_pct_return_per_trade, 
             'Win Rate': win_rate
         }
         return metrics

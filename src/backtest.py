@@ -82,12 +82,12 @@ class BacktestEngine:
         print(f"Maximum Drawdown: {metrics['Maximum Drawdown']*100:.2f}%")
         print(f"Sharpe Ratio: {metrics['Sharpe Ratio']:.2f}")
         print(f"Total Trades Executed: {metrics['Total Trades']}")
-        print(f"Average Return per Trade: {metrics['Avg Return per Trade']}")
+        print(f"Average Return per Trade: {metrics['Avg Return per Trade']*100:.2f}%")
         print(f"Win Rate: {metrics['Win Rate']*100:.2f}%")
         return metrics
 
 if __name__ == "__main__":
-    backtest = BacktestEngine(start_date="1981-01-01", end_date="2023-12-31", initial_cash=1000000)
+    backtest = BacktestEngine(start_date="2023-01-01", end_date="2023-12-31", initial_cash=1000000)
     backtest.run_backtest()
     print("First 3 portfolio values:")
     print(backtest.portfolio.portfolio_value_history[0:3])
@@ -97,4 +97,9 @@ if __name__ == "__main__":
 
     print("\nSecond trade record:")
     print(backtest.portfolio.trades[1])
+
+    print(f"Number of portfolio value records: {len(backtest.portfolio.portfolio_value_history)}")
+    print(f"First date: {backtest.portfolio.portfolio_value_history[0][1]}")
+    print(f"Last date: {backtest.portfolio.portfolio_value_history[-1][1]}")
+    print(f"Days between: {(backtest.portfolio.portfolio_value_history[-1][1] - backtest.portfolio.portfolio_value_history[0][1]).days}")
     performance_metrics = backtest.evaluate_performance()
