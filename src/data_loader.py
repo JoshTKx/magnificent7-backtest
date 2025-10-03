@@ -15,6 +15,11 @@ class DataLoader():
             'NVDA': '1999-01-22',
         }
 
+    def fetch_benchmark(self, start, end):
+        spy = yf.Ticker('^GSPC')
+        data = spy.history(start=start, end=end, auto_adjust=True)
+        return data
+
     def fetch_single_stock(self, symbol , interval = '1d', start = '1981-01-01', end = None):
         if symbol not in self.ipo_dates:
             raise ValueError(f"Ticker {symbol} not found in IPO dates.")

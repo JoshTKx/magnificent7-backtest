@@ -246,10 +246,10 @@ class Portfolio:
 
         # Annualization 
         total_trading_days = len(value_df) 
-        print(f"positions_history: {self.positions_history}")
-        print(f"Total trading days in backtest: {total_trading_days}")
-        print(f"portfolio value history length: {len(self.portfolio_value_history)}")
-        print(f"Portfolio value history sample:\n{value_df}")
+        # print(f"positions_history: {self.positions_history}")
+        # print(f"Total trading days in backtest: {total_trading_days}")
+        # print(f"portfolio value history length: {len(self.portfolio_value_history)}")
+        # print(f"Portfolio value history sample:\n{value_df}")
         years = total_trading_days / 252
         annualized_return = (1 + total_return) ** (1 / years) - 1 if years > 0 else 0
 
@@ -299,6 +299,31 @@ class Portfolio:
         'Avg Return per Trade': avg_return_per_trade,
         'Win Rate': win_rate
     }
+
+    def analyse_monthly_returns(self):
+        if not self.portfolio_value_history:
+            return {}
+        
+        value_df = pd.DataFrame(self.portfolio_value_history, columns=['Total Value', 'Date'])
+        value_df['Date'] = pd.to_datetime(value_df['Date'])
+        value_df = value_df.drop_duplicates(subset=['Date'], keep='last').set_index('Date')['Total Value']
+
+        monthly_values = value_df.resample('M').last()
+        monthly_returns = monthly_values.pct_change()
+
+        best_month = monthly_returns['Value'].idxmax()
+        best_return = monthly_returns.loc[best_month, 'Value']
+
+        position_df = pd.DataFrame(self.positions_history, columns=['Positions', 'Date'])
+        position_df['Date'] = pd.to_datetime(position_df['Date'])
+        position_df = position_df.drop_duplicates(subset=['Date'], keep='last').set_index('Date')['Positions']
+
+        monthly_positions = position_df.resample('M').last()
+        best_month_positions = monthly_positions[best_month]
+        prev_month_position = monthly_positions[best_month.prev()]
+        
+
+
 
 
 
