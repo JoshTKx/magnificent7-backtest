@@ -16,6 +16,7 @@ class BacktestEngine:
         self.current_cash = initial_cash
         self.historical_data = {}
         self.historical_data_with_signals = {}
+        
 
     def load_data(self):
         # Load historical data from the specified data source
@@ -49,6 +50,7 @@ class BacktestEngine:
             return None
 
         master_calendar = stock_data_dict[next(iter(stock_data_dict))].index
+        self.trading_days = len(master_calendar)
 
         for i, current_date in enumerate(master_calendar):
             if i + 1 < len(master_calendar):
@@ -62,9 +64,9 @@ class BacktestEngine:
 
             has_trades = self.portfolio.generate_pending_trades(daily_closing_prices, daily_signals, daily_rsi, current_date, stock_data_dict)
 
-            if has_trades:
-                daily_opening_prices = self.extract_daily_prices(next_date, price_type='Open')
-                self.portfolio.execute_pending_trades(daily_opening_prices, next_date)
+            #if has_trades:
+            daily_opening_prices = self.extract_daily_prices(next_date, price_type='Open')
+            self.portfolio.execute_pending_trades(daily_opening_prices, next_date)
 
 
 
@@ -87,19 +89,19 @@ class BacktestEngine:
         return metrics
 
 if __name__ == "__main__":
-    backtest = BacktestEngine(start_date="2023-01-01", end_date="2023-12-31", initial_cash=1000000)
+    backtest = BacktestEngine(start_date="1981-01-01", end_date="2023-12-31", initial_cash=1000000)
     backtest.run_backtest()
-    print("First 3 portfolio values:")
-    print(backtest.portfolio.portfolio_value_history[0:3])
+    # print("First 3 portfolio values:")
+    # print(backtest.portfolio.portfolio_value_history[0:3])
 
-    print("\nFirst trade record:")
-    print(backtest.portfolio.trades[0])
+    # print("\nFirst trade record:")
+    # print(backtest.portfolio.trades[0])
 
-    print("\nSecond trade record:")
-    print(backtest.portfolio.trades[1])
+    # print("\nSecond trade record:")
+    # print(backtest.portfolio.trades[1])
 
-    print(f"Number of portfolio value records: {len(backtest.portfolio.portfolio_value_history)}")
-    print(f"First date: {backtest.portfolio.portfolio_value_history[0][1]}")
-    print(f"Last date: {backtest.portfolio.portfolio_value_history[-1][1]}")
-    print(f"Days between: {(backtest.portfolio.portfolio_value_history[-1][1] - backtest.portfolio.portfolio_value_history[0][1]).days}")
+    # print(f"Number of portfolio value records: {len(backtest.portfolio.portfolio_value_history)}")
+    # print(f"First date: {backtest.portfolio.portfolio_value_history[0][1]}")
+    # print(f"Last date: {backtest.portfolio.portfolio_value_history[-1][1]}")
+    # print(f"Days between: {(backtest.portfolio.portfolio_value_history[-1][1] - backtest.portfolio.portfolio_value_history[0][1]).days}")
     performance_metrics = backtest.evaluate_performance()

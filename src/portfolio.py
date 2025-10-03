@@ -28,6 +28,7 @@ class Portfolio:
 
         self.trades = [] # list of trade records
         self.portfolio_value_history = [] # list of (date, total_value)
+        self.positions_history = [] # list of (date, positions snapshot)
 
     def get_investable_stocks(self, date, price_data_dict):
         investable = []
@@ -226,6 +227,7 @@ class Portfolio:
         self.pending_trade = {}
         self.trades.append(trade_record)
         self.portfolio_value_history.append((self.calculate_portfolio_value(opening_prices), date))
+        self.positions_history.append((self.positions.copy(), date))
 
     def evaluate_performance(self):
         if not self.portfolio_value_history:
@@ -235,55 +237,68 @@ class Portfolio:
         value_df['Date'] = pd.to_datetime(value_df['Date'])
         value_df = value_df.drop_duplicates(subset=['Date'], keep='last').set_index('Date')['Total Value']
 
-        daily_returns = value_df.pct_change().dropna()
-        total_trading_days = len(value_df)
 
-        
-        
+
+        # Calculate returns
         initial_value = self.initial_cash
         final_value = self.portfolio_value_history[-1][0]
-        total_return = (final_value/ initial_value) - 1 if initial_value > 0 else 0
-        num_days = (self.portfolio_value_history[-1][1] - self.portfolio_value_history[0][1]).days
-        annualized_return = (1 + total_return) ** (252 / total_trading_days) - 1 if total_trading_days > 0 else 0
-        annualized_volatility = daily_returns.std() * (252 ** 0.5) if not daily_returns.empty else 0
-        cummulative_max = value_df.cummax()
-        drawdown = (value_df / cummulative_max) - 1
-        maximum_drawdown = drawdown.min() if not drawdown.empty else 0
+        total_return = (final_value / initial_value) - 1 if initial_value > 0 else 0
+
+        # Annualization 
+        total_trading_days = len(value_df) 
+        print(f"positions_history: {self.positions_history}")
+        print(f"Total trading days in backtest: {total_trading_days}")
+        print(f"portfolio value history length: {len(self.portfolio_value_history)}")
+        print(f"Portfolio value history sample:\n{value_df}")
+        years = total_trading_days / 252
+        annualized_return = (1 + total_return) ** (1 / years) - 1 if years > 0 else 0
+
+        # Risk metrics
+        daily_returns = value_df.pct_change().dropna()
+        annualized_volatility = daily_returns.std() * (252 ** 0.5) if len(daily_returns) > 0 else 0
+        
+        # Drawdown
+        cumulative_max = value_df.cummax()
+        drawdown = (value_df / cumulative_max) - 1
+        maximum_drawdown = drawdown.min() if len(drawdown) > 0 else 0
+        
+        # Sharpe Ratio
         risk_free_rate = 0.02
         sharpe_ratio = (annualized_return - risk_free_rate) / annualized_volatility if annualized_volatility > 0 else 0
-        
 
+        # Trade statistics
+        total_num_trades = sum(len(trade) - 1 for trade in self.trades)
+        
         all_trade_pnls = []
         for trade in self.trades:
             for symbol, details in trade.items():
-                if symbol != 'Date' and 'P&L' in details:
+                if symbol != 'Date' and isinstance(details, dict) and 'P&L' in details:
                     all_trade_pnls.append(details['P&L'])
-
+        
         realized_trades = len(all_trade_pnls)
-        total_num_trades = sum(len(trade) - 1 for trade in self.trades) 
-        avg_pct_return_per_trade = (final_value / initial_value) ** (1 / total_num_trades) - 1 if total_num_trades > 0 else 0
         
         if realized_trades > 0:
-            avg_return_per_trade = sum(all_trade_pnls) / realized_trades # USD value
             winning_trades = [pnl for pnl in all_trade_pnls if pnl > 0]
             win_rate = len(winning_trades) / realized_trades
         else:
-            avg_return_per_trade = 0
             win_rate = 0.0
 
-        metrics = {
-            'Initial Value': initial_value,
-            'Final Value': final_value,
-            'Total Return': total_return,
-            'Annualized Return': annualized_return,
-            'Annualized Volatility': annualized_volatility,
-            'Maximum Drawdown': maximum_drawdown,
-            'Sharpe Ratio': sharpe_ratio,
-            'Total Trades': total_num_trades,
-            'Avg Return per Trade': avg_pct_return_per_trade, 
-            'Win Rate': win_rate
-        }
-        return metrics
+        # Average return per trade (geometric mean contribution)
+        avg_return_per_trade = ((1 + total_return) ** (1 / total_num_trades) - 1) if total_num_trades > 0 else 0
+        
+        
+        return {
+        'Initial Value': initial_value,
+        'Final Value': final_value,
+        'Total Return': total_return,
+        'Annualized Return': annualized_return,
+        'Annualized Volatility': annualized_volatility,
+        'Maximum Drawdown': maximum_drawdown,
+        'Sharpe Ratio': sharpe_ratio,
+        'Total Trades': total_num_trades,
+        'Avg Return per Trade': avg_return_per_trade,
+        'Win Rate': win_rate
+    }
 
 
 
