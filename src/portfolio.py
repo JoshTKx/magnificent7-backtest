@@ -1,6 +1,7 @@
 import heapq
 import pandas as pd
 from datetime import date, timedelta
+import math
 
 class Portfolio:
     def __init__(self, initial_cash=1000000, commission=0.001, slippage = 0.0002, min_shares = 10):
@@ -28,7 +29,7 @@ class Portfolio:
 
         self.trades = [] # list of trade records
         self.portfolio_value_history = [] # list of (date, total_value)
-        self.positions_history = [] # list of (date, positions snapshot)
+        self.positions_value_history = [] # list of (date, positions snapshot)
 
     def get_investable_stocks(self, date, price_data_dict):
         investable = []
@@ -49,7 +50,7 @@ class Portfolio:
         
         num_investable = len(investable)
         if num_investable == 0:
-            return 0
+            return None
         return 1.0 / num_investable
         
 
@@ -129,7 +130,13 @@ class Portfolio:
 
         investable_stocks = self.get_investable_stocks(date, price_data_dict)
         target_weight = self.calculate_target_weights(investable_stocks)
+        if not investable_stocks or target_weight == 0:
+            self.pending_trade = {}
+            return False
         current_weights = self.calculate_current_weights(closing_prices)
+        total_portfolio_value = self.calculate_portfolio_value(closing_prices)
+
+        trade_priority_queue = self.calculate_trade_priority(current_weights, rsi_signals, rsi_values, target_weight, investable_stocks)
         total_portfolio_value = self.calculate_portfolio_value(closing_prices)
 
         trade_priority_queue = self.calculate_trade_priority(current_weights, rsi_signals, rsi_values, target_weight, investable_stocks)
@@ -165,43 +172,41 @@ class Portfolio:
             return - trade_value - trade_cost
         elif shares < 0:  # Sell
             return trade_value - trade_cost
-        return 0
-    
-    
     def calculate_shares(self,symbol, current_price, value_to_trade):
         if current_price <= 0:
             return 0
         if value_to_trade == 0:
             return 0
         
-        num_shares = int(value_to_trade / current_price)
+        if value_to_trade > 0:
+            num_shares = math.floor(value_to_trade / current_price)
+        else:
+            num_shares = math.ceil(value_to_trade / current_price)
 
         if abs(num_shares) < self.min_shares:
             return 0
-
         if num_shares < 0:  # Sell
-            num_shares = -min(abs(num_shares), self.positions.get(symbol, 0))
+            held_shares = max(self.positions.get(symbol, 0), 0)
+            num_shares = -min(abs(num_shares), held_shares)
         
         return num_shares
-
     
     def execute_pending_trades(self, opening_prices, date):
         trades_to_execute = self.pending_trade
         trade_record = {}
         trade_record['Date'] = date
 
+        portfolio_values = {}
 
-        
         for symbol, value in trades_to_execute.items():
             current_price = opening_prices.get(symbol, 0)
             shares = self.calculate_shares(symbol, current_price, value)
             if shares == 0:
                 continue
-
-            trade_record[symbol] = {}
-            shares_before_trade = self.positions.get(symbol, 0)
-            
             self.positions[symbol] = self.positions.get(symbol, 0) + shares
+            # Guard against negative positions due to bugs
+            if self.positions[symbol] < 0:
+                self.positions[symbol] = 0
             cash_flow = self.calculate_trade_cash_flow(current_price, shares)
             self.cash += cash_flow
 
@@ -209,25 +214,34 @@ class Portfolio:
                 self.share_cost[symbol] = self.share_cost.get(symbol, 0) + (shares * current_price * (1 + self.commission + self.slippage)) 
 
             elif shares < 0 and symbol in self.share_cost:
+                shares_before_trade = self.positions.get(symbol, 0) - shares  # Calculate shares before trade
                 if shares_before_trade > 0:
                     avg_cost_per_share = self.share_cost[symbol] / shares_before_trade
+                    if symbol not in trade_record:
+                        trade_record[symbol] = {}
                     trade_record[symbol]['P&L'] = (current_price - avg_cost_per_share) * abs(shares)
                     self.share_cost[symbol] -= (abs(shares) * avg_cost_per_share) 
                 if self.positions[symbol] == 0:
                     del self.share_cost[symbol]
 
-
+            if symbol not in trade_record:
+                trade_record[symbol] = {}
             trade_record[symbol]['Action'] = 'BUY' if shares > 0 else 'SELL'
             trade_record[symbol]['Shares'] = shares
             trade_record[symbol]['Price'] = current_price
             trade_record[symbol]['Value'] = shares * current_price
             trade_record[symbol]['Cash_Flow'] = cash_flow
+            portfolio_values[symbol] = self.positions[symbol] * current_price
+        
+
+        if not portfolio_values:
+            portfolio_values = {symbol: self.positions.get(symbol, 0) * opening_prices.get(symbol, 0) for symbol in self.target_stocks}
 
 
         self.pending_trade = {}
         self.trades.append(trade_record)
         self.portfolio_value_history.append((self.calculate_portfolio_value(opening_prices), date))
-        self.positions_history.append((self.positions.copy(), date))
+        self.positions_value_history.append((portfolio_values, date))
 
     def evaluate_performance(self):
         if not self.portfolio_value_history:
@@ -267,7 +281,9 @@ class Portfolio:
         sharpe_ratio = (annualized_return - risk_free_rate) / annualized_volatility if annualized_volatility > 0 else 0
 
         # Trade statistics
-        total_num_trades = sum(len(trade) - 1 for trade in self.trades)
+        total_num_trades = sum(
+            1 for trade in self.trades for symbol in trade if symbol != 'Date'
+        )
         
         all_trade_pnls = []
         for trade in self.trades:
@@ -304,31 +320,52 @@ class Portfolio:
         if not self.portfolio_value_history:
             return {}
         
-        value_df = pd.DataFrame(self.portfolio_value_history, columns=['Total Value', 'Date'])
+        value_df = pd.DataFrame(self.portfolio_value_history, columns=['Value', 'Date'])
         value_df['Date'] = pd.to_datetime(value_df['Date'])
-        value_df = value_df.drop_duplicates(subset=['Date'], keep='last').set_index('Date')['Total Value']
+        value_df = value_df.set_index('Date')
 
-        monthly_values = value_df.resample('M').last()
+        monthly_values = value_df.resample('ME').last()
         monthly_returns = monthly_values.pct_change()
 
         best_month = monthly_returns['Value'].idxmax()
         best_return = monthly_returns.loc[best_month, 'Value']
+        prev_month_end = best_month - pd.offsets.MonthEnd(1)
 
-        position_df = pd.DataFrame(self.positions_history, columns=['Positions', 'Date'])
+        # print(f"Best Month: {best_month.strftime('%Y-%m')} with Return: {best_return*100:.2f}%")
+        # print(f"Previous Month End: {prev_month_end.strftime('%Y-%m-%d')}")
+        # print(f"Positions Value History Length: {len(self.positions_value_history)}")
+        
+
+        position_df = pd.DataFrame(self.positions_value_history, columns=['Positions', 'Date'])
         position_df['Date'] = pd.to_datetime(position_df['Date'])
         position_df = position_df.drop_duplicates(subset=['Date'], keep='last').set_index('Date')['Positions']
 
-        monthly_positions = position_df.resample('M').last()
-        best_month_positions = monthly_positions[best_month]
-        prev_month_position = monthly_positions[best_month.prev()]
+        monthly_positions = position_df.resample('ME').last()
+
         
+        try:
+            best_month_positions = monthly_positions.loc[best_month]
+        except KeyError:
+            best_month_positions = None
+        try:
+            prev_month_position = monthly_positions.loc[prev_month_end]
+        except KeyError:
+            prev_month_position = None
 
+        # print(f"Best Month Positions on {best_month.strftime('%Y-%m-%d')}: {best_month_positions}")
+        # print(f"Previous Month Positions on {prev_month_end.strftime('%Y-%m-%d')}: {prev_month_position}")
 
+        best_month_returns = {}
 
+        for symbol in self.target_stocks:
+            prev_val = prev_month_position.get(symbol, 0) if prev_month_position is not None else 0
+            best_val = best_month_positions.get(symbol, 0) if best_month_positions is not None else 0
 
+            returns = abs(best_val - prev_val)
 
-
+            best_month_returns[symbol] = returns
+        
+        return best_month_returns, best_month, best_return
 
             
 
-        

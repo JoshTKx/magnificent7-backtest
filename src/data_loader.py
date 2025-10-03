@@ -29,14 +29,14 @@ class DataLoader():
         
         try: 
             ticker = yf.Ticker(symbol)
-            ipo_date = self.ipo_dates.get(ticker.ticker)
+            ipo_date = self.ipo_dates.get(symbol)
             start_date = max(start, ipo_date)
             data = ticker.history(start=start_date, end = end, interval=interval, auto_adjust=True)
             print(f"Fetched {len(data)} rows for {ticker.ticker} starting from {start_date} to {end if end else 'present'}")
             validated_data = self.validate_data(data, ticker.ticker)
             return validated_data
         except Exception as e:
-            print(f"Error fetching data for {ticker}: {e}")
+            print(f"Error fetching data for {symbol}: {e}")
             return None
     
 
@@ -52,12 +52,12 @@ class DataLoader():
                 print(f"Missing column: {col}")
                 return None
             
-        orginal_length = len(data)
+        original_length = len(data)
         data = data.dropna(subset=required_columns)
         cleaned_length = len(data)
 
-        if cleaned_length < orginal_length:
-            print(f"Dropped {orginal_length - cleaned_length} rows with missing values for {symbol}")
+        if cleaned_length < original_length:
+            print(f"Dropped {original_length - cleaned_length} rows with missing values for {symbol}")
         
         if data['Close'].le(0).any():
             print(f"Invalid close prices found for {symbol}")
@@ -79,11 +79,12 @@ class DataLoader():
             if data is not None:
                 raw_data[symbol] = data
         
-        all_indexes = [df.index for df in raw_data.values()]
-        master_calendar = reduce(pd.Index.union, all_indexes)
+        all_indexes = [df for df in raw_data.values()]
+        master_calendar = pd.concat(all_indexes, axis=0).index.unique().sort_values()
         final_data = {}
         for symbol, df in raw_data.items():
-            reindexed_df = df.reindex(master_calendar)
+            # Reindex and forward-fill missing values to avoid NaNs from calendar alignment
+            reindexed_df = df.reindex(master_calendar).fillna(method='ffill')
             final_data[symbol] = reindexed_df
         
         print(f"Loaded data for {len(final_data)} stocks with unified calendar from {start} to {end if end else 'present'}.")

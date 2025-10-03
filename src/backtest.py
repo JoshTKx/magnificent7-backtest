@@ -1,4 +1,5 @@
 
+from datetime import date
 from src.data_loader import DataLoader
 from src.portfolio import Portfolio
 from src.indicator import TechnicalIndicator
@@ -64,7 +65,7 @@ class BacktestEngine:
 
             has_trades = self.portfolio.generate_pending_trades(daily_closing_prices, daily_signals, daily_rsi, current_date, stock_data_dict)
 
-            #if has_trades:
+            
             daily_opening_prices = self.extract_daily_prices(next_date, price_type='Open')
             self.portfolio.execute_pending_trades(daily_opening_prices, next_date)
 
@@ -87,21 +88,72 @@ class BacktestEngine:
         print(f"Average Return per Trade: {metrics['Avg Return per Trade']*100:.2f}%")
         print(f"Win Rate: {metrics['Win Rate']*100:.2f}%")
         return metrics
+    
+    def best_month(self):
+        best_month_returns, best_month, best_return = self.portfolio.analyse_monthly_returns()
+        print(f"Best Month: {best_month.strftime('%Y-%m')} with Return: {best_return * 100:.2f}%")
+        print(f"Apple: {best_month_returns.get('AAPL', 'N/A')}")
+        print(f"Microsoft: {best_month_returns.get('MSFT', 'N/A')}")
+        print(f"Google: {best_month_returns.get('GOOG', 'N/A')}")
+        print(f"Amazon: {best_month_returns.get('AMZN', 'N/A')}")
+        print(f"Tesla: {best_month_returns.get('TSLA', 'N/A')}")
+        print(f"Meta: {best_month_returns.get('META', 'N/A')}")
+        print(f"NVIDIA: {best_month_returns.get('NVDA', 'N/A')}")
+
+        return best_month_returns, best_month, best_return
+    
+
+    def load_benchmark(self):
+        data_loader = DataLoader()
+        benchmark_data = data_loader.fetch_benchmark(start=self.start_date, end=self.end_date)
+        if benchmark_data is None or benchmark_data.empty:
+            print("No benchmark data available.")
+            return None
+        benchmark_data = benchmark_data[['Close']].rename(columns={'Close': 'Benchmark Close'})
+        return benchmark_data
+
+    def calculate_benchmark_performance(self):
+        benchmark_data = self.load_benchmark()
+        if benchmark_data is None:
+            return None
+
+        initial_value = self.initial_cash
+        initial_position = initial_value / benchmark_data['Benchmark Close'].iloc[0]
+        benchmark_data['Portfolio Value'] = benchmark_data['Benchmark Close'] * initial_position
+        benchmark_data['Daily Return'] = benchmark_data['Portfolio Value'].pct_change().fillna(0)
+        final_value = benchmark_data['Portfolio Value'].iloc[-1]
+        total_return = (final_value - initial_value) / initial_value
+        num_years = (benchmark_data.index[-1] - benchmark_data.index[0]).days / 252
+        annualized_return = (1 + total_return) ** (1 / num_years) - 1 if num_years > 0 else 0
+        annualized_volatility = benchmark_data['Daily Return'].std() * (252 ** 0.5)
+
+        benchmark_data['Cumulative Return'] = (1 + benchmark_data['Daily Return']).cumprod() - 1
+        rolling_max = benchmark_data['Portfolio Value'].cummax()
+        drawdown = (benchmark_data['Portfolio Value'] - rolling_max) / rolling_max
+        max_drawdown = drawdown.min()
+        sharpe_ratio = (annualized_return / annualized_volatility) if annualized_volatility != 0 else 0
+        print(f"Benchmark Performance from {self.start_date} to {self.end_date}:")
+        print(f"Initial Value: ${initial_value:.2f}")
+        print(f"Final Value: ${final_value:.2f}")
+        print(f"Total Return: {total_return*100:.2f}%")
+        print(f"Annualized Return: {annualized_return*100:.2f}%")
+        print(f"Annualized Volatility: {annualized_volatility*100:.2f}%")
+        print(f"Maximum Drawdown: {max_drawdown*100:.2f}%")
+        print(f"Sharpe Ratio: {sharpe_ratio:.2f}")  
+
+        return benchmark_data, {
+            'Initial Value': initial_value,
+            'Final Value': final_value,
+            'Total Return': total_return,
+            'Annualized Return': annualized_return,
+            'Annualized Volatility': annualized_volatility,
+            'Maximum Drawdown': max_drawdown,
+            'Sharpe Ratio': sharpe_ratio
+        }
 
 if __name__ == "__main__":
     backtest = BacktestEngine(start_date="1981-01-01", end_date="2023-12-31", initial_cash=1000000)
     backtest.run_backtest()
-    # print("First 3 portfolio values:")
-    # print(backtest.portfolio.portfolio_value_history[0:3])
-
-    # print("\nFirst trade record:")
-    # print(backtest.portfolio.trades[0])
-
-    # print("\nSecond trade record:")
-    # print(backtest.portfolio.trades[1])
-
-    # print(f"Number of portfolio value records: {len(backtest.portfolio.portfolio_value_history)}")
-    # print(f"First date: {backtest.portfolio.portfolio_value_history[0][1]}")
-    # print(f"Last date: {backtest.portfolio.portfolio_value_history[-1][1]}")
-    # print(f"Days between: {(backtest.portfolio.portfolio_value_history[-1][1] - backtest.portfolio.portfolio_value_history[0][1]).days}")
     performance_metrics = backtest.evaluate_performance()
+    best_month_returns, best_month_date, best_month_return = backtest.best_month()
+    benchmark_data, benchmark_metrics = backtest.calculate_benchmark_performance()
