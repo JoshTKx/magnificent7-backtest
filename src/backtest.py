@@ -1,8 +1,8 @@
 
 from datetime import date
-from src.data_loader import DataLoader
-from src.portfolio import Portfolio
-from src.indicator import TechnicalIndicator
+from .data_loader import DataLoader
+from .portfolio import Portfolio
+from .indicator import TechnicalIndicator
 import pandas as pd
 
 class BacktestEngine:
@@ -90,7 +90,7 @@ class BacktestEngine:
         return metrics
     
     def best_month(self):
-        best_month_returns, best_month, best_return = self.portfolio.analyse_monthly_returns()
+        best_month_returns, best_month, best_return, monthly_returns = self.portfolio.analyse_monthly_returns()
         print(f"Best Month: {best_month.strftime('%Y-%m')} with Return: {best_return * 100:.2f}%")
         print(f"Apple: {best_month_returns.get('AAPL', 'N/A')}")
         print(f"Microsoft: {best_month_returns.get('MSFT', 'N/A')}")
@@ -100,7 +100,7 @@ class BacktestEngine:
         print(f"Meta: {best_month_returns.get('META', 'N/A')}")
         print(f"NVIDIA: {best_month_returns.get('NVDA', 'N/A')}")
 
-        return best_month_returns, best_month, best_return
+        return best_month_returns, best_month, best_return, monthly_returns
     
 
     def load_benchmark(self):
@@ -155,5 +155,5 @@ if __name__ == "__main__":
     backtest = BacktestEngine(start_date="1981-01-01", end_date="2023-12-31", initial_cash=1000000)
     backtest.run_backtest()
     performance_metrics = backtest.evaluate_performance()
-    best_month_returns, best_month_date, best_month_return = backtest.best_month()
+    best_month_returns, best_month_date, best_month_return, monthly_returns = backtest.best_month()
     benchmark_data, benchmark_metrics = backtest.calculate_benchmark_performance()

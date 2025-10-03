@@ -28,8 +28,8 @@ class Portfolio:
         self.pending_trade = {} # symbol -> shares to trade
 
         self.trades = [] # list of trade records
-        self.portfolio_value_history = [] # list of (date, total_value)
-        self.positions_value_history = [] # list of (date, positions snapshot)
+        self.portfolio_value_history = [] # list of (total portfolio value, date)
+        self.positions_value_history = [] # list of (positions value dict, date)
 
     def get_investable_stocks(self, date, price_data_dict):
         investable = []
@@ -365,7 +365,7 @@ class Portfolio:
 
             best_month_returns[symbol] = returns
         
-        return best_month_returns, best_month, best_return
+        return best_month_returns, best_month, best_return, monthly_returns
 
             
 
