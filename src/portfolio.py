@@ -361,8 +361,8 @@ class Portfolio:
             prev_val = prev_month_position.get(symbol, 0) if prev_month_position is not None else 0
             best_val = best_month_positions.get(symbol, 0) if best_month_positions is not None else 0
 
-            returns = abs(best_val - prev_val)
-
+            returns = best_val - prev_val
+        
             best_month_returns[symbol] = returns
         
         return best_month_returns, best_month, best_return, monthly_returns

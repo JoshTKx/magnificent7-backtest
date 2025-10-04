@@ -83,8 +83,8 @@ class DataLoader():
         master_calendar = pd.concat(all_indexes, axis=0).index.unique().sort_values()
         final_data = {}
         for symbol, df in raw_data.items():
-            # Reindex and forward-fill missing values to avoid NaNs from calendar alignment
-            reindexed_df = df.reindex(master_calendar).fillna(method='ffill')
+            
+            reindexed_df = df.reindex(master_calendar)
             final_data[symbol] = reindexed_df
         
         print(f"Loaded data for {len(final_data)} stocks with unified calendar from {start} to {end if end else 'present'}.")
