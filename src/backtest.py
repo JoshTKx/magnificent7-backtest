@@ -1,12 +1,53 @@
 
+"""
+RSI-based backtesting engine for the Magnificent 7 stocks.
+
+This module provides a comprehensive backtesting framework that implements
+RSI momentum strategy on the Magnificent 7 technology stocks over extended
+time periods with detailed performance analysis.
+"""
+
 from datetime import date
+from typing import Dict, List, Optional, Tuple, Any
+import pandas as pd
+
+from .constants import TradingConstants, ValidationConstants
 from .data_loader import DataLoader
 from .portfolio import Portfolio
 from .indicator import TechnicalIndicator
-import pandas as pd
+
 
 class BacktestEngine:
-    def __init__(self, start_date = "1981-01-01", end_date = "2023-12-31", initial_cash = 1000000, commission = 0.001, slippage = 0.0002, min_transaction = 10):
+    """
+    RSI-based backtesting engine for the Magnificent 7 stocks.
+    
+    This class implements a complete backtesting framework with RSI signal generation,
+    portfolio management, and performance evaluation capabilities for the Magnificent 7
+    technology stocks over extended time periods.
+    
+    Args:
+        start_date (str): Start date in 'YYYY-MM-DD' format. Defaults to '1981-01-01'.
+        end_date (str): End date in 'YYYY-MM-DD' format. Defaults to '2023-12-31'.
+        initial_cash (int): Starting capital in USD. Defaults to $1,000,000.
+        commission (float): Commission rate per trade (e.g., 0.001 = 0.1%). Defaults to 0.1%.
+        slippage (float): Slippage rate per trade (e.g., 0.0002 = 0.02%). Defaults to 0.02%.
+        min_transaction (int): Minimum transaction size in shares. Defaults to 10.
+        
+    Attributes:
+        portfolio (Portfolio): Portfolio management instance
+        historical_data (Dict[str, pd.DataFrame]): Raw historical price data
+        historical_data_with_signals (Dict[str, pd.DataFrame]): Price data with RSI signals
+        sp500_data (pd.DataFrame): S&P 500 benchmark data
+    """
+    
+    def __init__(self, 
+                 start_date: str = TradingConstants.DEFAULT_START_DATE, 
+                 end_date: str = TradingConstants.DEFAULT_END_DATE, 
+                 initial_cash: int = TradingConstants.DEFAULT_INITIAL_CASH, 
+                 commission: float = TradingConstants.DEFAULT_COMMISSION, 
+                 slippage: float = TradingConstants.DEFAULT_SLIPPAGE, 
+                 min_transaction: int = TradingConstants.MIN_TRANSACTION_SIZE) -> None:
+        """Initialize the backtesting engine with configuration parameters."""
         self.portfolio = Portfolio(initial_cash, commission, slippage, min_transaction)
         self.start_date = start_date
         self.end_date = end_date
@@ -15,27 +56,67 @@ class BacktestEngine:
         self.slippage = slippage
         self.min_transaction = min_transaction
         self.current_cash = initial_cash
-        self.historical_data = {}
-        self.historical_data_with_signals = {}
-        
+        self.historical_data: Dict[str, pd.DataFrame] = {}
+        self.historical_data_with_signals: Dict[str, pd.DataFrame] = {}
+        self.sp500_data: Optional[pd.DataFrame] = None
 
-    def load_data(self):
+    def load_data(self) -> Dict[str, pd.DataFrame]:
+        """
+        Load historical stock data and generate trading signals.
+        
+        Fetches historical price data for all Magnificent 7 stocks within the
+        specified date range and generates RSI-based trading signals.
+        
+        Returns:
+            Dict[str, pd.DataFrame]: Dictionary mapping stock symbols to DataFrames
+                containing historical prices and RSI trading signals.
+                
+        Raises:
+            ValueError: If no historical data is available for the specified period.
+        """
         # Load historical data from the specified data source
         data_loader = DataLoader()
         self.historical_data = data_loader.load_all_stocks(start=self.start_date, end=self.end_date)
         print(f"Loaded historical data for {len(self.historical_data)} stocks.")
+        
+        self.historical_data_with_signals = TechnicalIndicator.generate_signals(self.historical_data)
+        print("Generated trading signals based on RSI.")
+        return self.historical_data_with_signals
+        print(f"Loaded historical data for {len(self.historical_data)} stocks.")
+        
         self.historical_data_with_signals = TechnicalIndicator.generate_signals(self.historical_data)
         print("Generated trading signals based on RSI.")
         return self.historical_data_with_signals
     
-    def extract_daily_prices(self, date, price_type='Close'):
+    def extract_daily_prices(self, date: str, price_type: str = 'Close') -> Dict[str, float]:
+        """
+        Extract daily prices for all stocks on a given date.
+        
+        Args:
+            date (str): Date to extract prices for
+            price_type (str): Type of price to extract ('Open', 'High', 'Low', 'Close')
+            
+        Returns:
+            Dict[str, float]: Dictionary mapping stock symbols to their prices
+        """
         daily_prices = {}
         for symbol, df in self.historical_data_with_signals.items():
             if date in df.index:
                 daily_prices[symbol] = df.loc[date, price_type]
         return daily_prices
 
-    def extract_daily_signals(self, date):
+    def extract_daily_signals(self, date: str) -> Tuple[Dict[str, int], Dict[str, float]]:
+        """
+        Extract daily trading signals and RSI values for all stocks.
+        
+        Args:
+            date (str): Date to extract signals for
+            
+        Returns:
+            Tuple containing:
+                - Dict[str, int]: Trading signals (1=buy, -1=sell, 0=hold)
+                - Dict[str, float]: RSI values for each stock
+        """
         daily_signals = {}
         daily_rsi = {}
         for symbol, df in self.historical_data_with_signals.items():
@@ -44,7 +125,7 @@ class BacktestEngine:
                 daily_rsi[symbol] = df.loc[date, 'RSI']
         return daily_signals, daily_rsi
 
-    def run_backtest(self):
+    def run_backtest(self) -> None:
         stock_data_dict = self.load_data()
         if not stock_data_dict:
             print("No historical data available for backtesting.")

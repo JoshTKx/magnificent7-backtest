@@ -1,18 +1,63 @@
+"""
+Sensitivity analysis module for the Magnificent 7 RSI backtesting system.
+
+This module provides comprehensive testing of strategy parameters including
+RSI thresholds, rebalancing costs, and various time period analyses to
+evaluate strategy robustness and optimize performance.
+"""
+
 import pandas as pd
 import numpy as np
-from src.backtest import BacktestEngine
+from typing import List, Dict, Tuple, Any
 import matplotlib.pyplot as plt
 import seaborn as sns
 
+from src.backtest import BacktestEngine
+from .constants import TradingConstants
+
+
 class SensitivityAnalysis:
-    def __init__(self, start_date, end_date, initial_cash=1000000):
+    """
+    Comprehensive sensitivity analysis for RSI trading strategy parameters.
+    
+    This class tests the robustness of the trading strategy across different
+    parameter configurations and market conditions to identify optimal settings
+    and understand performance sensitivity.
+    
+    Attributes:
+        start_date (str): Analysis start date
+        end_date (str): Analysis end date  
+        initial_cash (float): Initial portfolio value
+        results (List[Dict]): Collection of all test results
+    """
+    
+    def __init__(self, 
+                 start_date: str, 
+                 end_date: str, 
+                 initial_cash: float = TradingConstants.DEFAULT_INITIAL_CASH) -> None:
+        """
+        Initialize SensitivityAnalysis with date range and capital.
+        
+        Args:
+            start_date (str): Start date for analysis period
+            end_date (str): End date for analysis period
+            initial_cash (float): Initial portfolio cash amount
+        """
         self.start_date = start_date
         self.end_date = end_date
         self.initial_cash = initial_cash
         self.results = []
     
-    def test_rsi_thresholds(self):
-        """Test different RSI buy/sell thresholds"""
+    def test_rsi_thresholds(self) -> pd.DataFrame:
+        """
+        Test different RSI buy/sell threshold combinations.
+        
+        Tests various RSI configurations from conservative to aggressive
+        to determine optimal threshold settings for different risk preferences.
+        
+        Returns:
+            pd.DataFrame: Results comparing performance across RSI threshold configurations
+        """
         print("Running RSI Threshold Sensitivity Tests...")
         
         threshold_combinations = [
@@ -53,8 +98,16 @@ class SensitivityAnalysis:
         
         return pd.DataFrame(results)
     
-    def test_transaction_costs(self):
-        """Test sensitivity to transaction costs"""
+    def test_transaction_costs(self) -> pd.DataFrame:
+        """
+        Test sensitivity to different transaction cost scenarios.
+        
+        Evaluates strategy performance under various commission and slippage
+        assumptions from optimistic institutional rates to pessimistic retail costs.
+        
+        Returns:
+            pd.DataFrame: Performance comparison across transaction cost scenarios
+        """
         print("\nRunning Transaction Cost Sensitivity Tests...")
         
         cost_scenarios = [
@@ -87,8 +140,16 @@ class SensitivityAnalysis:
         
         return pd.DataFrame(results)
     
-    def test_time_periods(self):
-        """Test strategy across different time periods"""
+    def test_time_periods(self) -> pd.DataFrame:
+        """
+        Test strategy performance across different historical time periods.
+        
+        Analyzes strategy robustness by evaluating performance across
+        distinct market regimes and decades to identify temporal dependencies.
+        
+        Returns:
+            pd.DataFrame: Performance breakdown by historical time periods
+        """
         print("\nRunning Time Period Analysis...")
         
         periods = [
@@ -123,8 +184,23 @@ class SensitivityAnalysis:
         
         return pd.DataFrame(results)
     
-    def visualize_results(self, rsi_df, cost_df, period_df):
-        """Create comprehensive visualization of sensitivity tests"""
+    def visualize_results(self, 
+                         rsi_df: pd.DataFrame, 
+                         cost_df: pd.DataFrame, 
+                         period_df: pd.DataFrame) -> None:
+        """
+        Create comprehensive visualization of sensitivity test results.
+        
+        Generates a multi-panel dashboard showing:
+        - RSI threshold impact on returns and risk metrics
+        - Transaction cost sensitivity analysis
+        - Performance consistency across time periods
+        
+        Args:
+            rsi_df (pd.DataFrame): RSI threshold test results
+            cost_df (pd.DataFrame): Transaction cost test results  
+            period_df (pd.DataFrame): Time period analysis results
+        """
         fig, axes = plt.subplots(2, 3, figsize=(20, 12))
         fig.suptitle('Strategy Robustness & Sensitivity Analysis', fontsize=16, fontweight='bold')
         

@@ -1,0 +1,29 @@
+{
+  "analysis_metadata": {
+    "analysis_date": "2025-10-05T03:21:11.511946",
+    "comparison_period": "1981-01-01 to 2023-12-31",
+    "total_days": 10839,
+    "strategy_name": "Magnificent 7 RSI Strategy"
+  },
+  "final_performance": {
+    "strategy_final_return_pct": 7380200.8,
+    "benchmark_final_return_pct": 3357.15,
+    "total_outperformance_pct": 7376843.65,
+    "strategy_final_value": 73714550517.07,
+    "benchmark_final_value": 34984818.88
+  },
+  "relative_performance": {
+    "days_outperformed": 9416,
+    "total_days": 10839,
+    "outperformance_rate_pct": 86.9,
+    "avg_daily_outperformance_pct": 606810.326,
+    "max_daily_outperformance_pct": 7425439.54,
+    "min_daily_outperformance_pct": -98.43
+  },
+  "rolling_performance": {
+    "strategy_avg_1y_return_pct": 41.73,
+    "benchmark_avg_1y_return_pct": 9.8,
+    "strategy_volatility_1y_pct": 63.68,
+    "benchmark_volatility_1y_pct": 16.25
+  }
+}

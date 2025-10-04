@@ -1,0 +1,77 @@
+{
+  "analysis_metadata": {
+    "analysis_date": "2025-10-05T03:06:50.263611",
+    "period": "1981-01-01 to 2023-12-31",
+    "total_months": 516
+  },
+  "key_months": {
+    "best_month": {
+      "date": "1998-06",
+      "return_pct": 44.84
+    },
+    "worst_month": {
+      "date": "1983-09",
+      "return_pct": -31.32
+    }
+  },
+  "summary_statistics": {
+    "average_monthly_return_pct": 2.8,
+    "median_monthly_return_pct": 2.26,
+    "standard_deviation_pct": 10.79,
+    "skewness": 0.3,
+    "kurtosis": 1.19
+  },
+  "performance_distribution": {
+    "positive_months": 310,
+    "negative_months": 205,
+    "positive_rate_pct": 60.1,
+    "months_above_10pct": 112,
+    "months_below_minus_10pct": 51
+  },
+  "top_performers": {
+    "top_5_months": [
+      {
+        "date": "1998-06",
+        "return_pct": 44.84
+      },
+      {
+        "date": "1987-01",
+        "return_pct": 38.56
+      },
+      {
+        "date": "2001-01",
+        "return_pct": 37.52
+      },
+      {
+        "date": "1982-10",
+        "return_pct": 36.73
+      },
+      {
+        "date": "1983-01",
+        "return_pct": 36.67
+      }
+    ],
+    "bottom_5_months": [
+      {
+        "date": "1983-09",
+        "return_pct": -31.32
+      },
+      {
+        "date": "1983-07",
+        "return_pct": -30.79
+      },
+      {
+        "date": "2008-01",
+        "return_pct": -24.73
+      },
+      {
+        "date": "2002-06",
+        "return_pct": -24.44
+      },
+      {
+        "date": "1981-09",
+        "return_pct": -24.22
+      }
+    ]
+  }
+}

@@ -1,13 +1,45 @@
+"""
+Technical indicator module for RSI-based trading signals.
+
+This module provides RSI (Relative Strength Index) calculation and signal generation
+functionality for the Magnificent 7 RSI backtesting strategy.
+"""
+
 import pandas as pd
 import numpy as np
+from typing import Dict, Optional
+
+from .constants import TradingConstants
+
 
 class TechnicalIndicator:
+    """
+    Technical indicator calculations and signal generation.
+    
+    This class provides static methods for calculating RSI and generating
+    trading signals based on configurable thresholds.
+    """
+    
     # Class-level configurable thresholds
-    RSI_BUY_THRESHOLD = 35
-    RSI_SELL_THRESHOLD = 65
+    RSI_BUY_THRESHOLD = TradingConstants.RSI_BUY_THRESHOLD
+    RSI_SELL_THRESHOLD = TradingConstants.RSI_SELL_THRESHOLD
 
     @staticmethod
-    def calculate_rsi(data, window=14):
+    def calculate_rsi(data: pd.DataFrame, window: int = TradingConstants.RSI_WINDOW) -> pd.DataFrame:
+        """
+        Calculate Relative Strength Index (RSI) for price data.
+        
+        Args:
+            data (pd.DataFrame): DataFrame with 'Close' price column
+            window (int): RSI calculation window (default: 14)
+            
+        Returns:
+            pd.DataFrame: Original data with added 'RSI' column
+            
+        Note:
+            RSI values range from 0 to 100. Values below 30 typically indicate
+            oversold conditions, while values above 70 indicate overbought conditions.
+        """
 
         new_data = data.copy()
         

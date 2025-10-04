@@ -1,26 +1,68 @@
+"""
+Data loading module for the Magnificent 7 RSI backtesting system.
+
+This module provides functionality to fetch and validate historical stock price data
+from Yahoo Finance for the Magnificent 7 stocks and benchmark data.
+"""
+
 import yfinance as yf
 from functools import reduce
+from typing import Dict, Optional, List
 import pandas as pd
 
+from .constants import TradingConstants, ValidationConstants
 
-class DataLoader():
-    def __init__(self):
-        self.ipo_dates ={
-            'AAPL': '1980-12-12',  
-            'MSFT': '1986-03-13',   
-            'GOOG': '2004-08-19', 
-            'AMZN': '1997-05-15',
-            'TSLA': '2010-06-29',
-            'META': '2012-05-18',
-            'NVDA': '1999-01-22',
-        }
 
-    def fetch_benchmark(self, start, end):
-        spy = yf.Ticker('^GSPC')
+class DataLoader:
+    """
+    Data loader for fetching and validating historical stock price data.
+    
+    This class handles fetching historical price data from Yahoo Finance,
+    validating data quality, and managing IPO dates for the Magnificent 7 stocks.
+    
+    Attributes:
+        ipo_dates (Dict[str, str]): IPO dates for each stock symbol
+    """
+    
+    def __init__(self) -> None:
+        """Initialize the DataLoader with Magnificent 7 IPO dates."""
+        self.ipo_dates = TradingConstants.TARGET_STOCKS.copy()
+
+    def fetch_benchmark(self, start: str, end: str) -> pd.DataFrame:
+        """
+        Fetch S&P 500 benchmark data for the specified period.
+        
+        Args:
+            start (str): Start date in 'YYYY-MM-DD' format
+            end (str): End date in 'YYYY-MM-DD' format
+            
+        Returns:
+            pd.DataFrame: S&P 500 historical price data
+        """
+        spy = yf.Ticker(TradingConstants.BENCHMARK_SYMBOL)
         data = spy.history(start=start, end=end, auto_adjust=True)
         return data
 
-    def fetch_single_stock(self, symbol , interval = '1d', start = '1981-01-01', end = None):
+    def fetch_single_stock(self, 
+                          symbol: str, 
+                          interval: str = TradingConstants.DEFAULT_INTERVAL, 
+                          start: str = TradingConstants.DEFAULT_START_DATE, 
+                          end: Optional[str] = None) -> Optional[pd.DataFrame]:
+        """
+        Fetch historical price data for a single stock symbol.
+        
+        Args:
+            symbol (str): Stock ticker symbol (must be in Magnificent 7)
+            interval (str): Data interval (default: '1d')
+            start (str): Start date in 'YYYY-MM-DD' format
+            end (Optional[str]): End date in 'YYYY-MM-DD' format
+            
+        Returns:
+            Optional[pd.DataFrame]: Validated historical price data or None if fetch fails
+            
+        Raises:
+            ValueError: If symbol not supported or invalid date range
+        """
         if symbol not in self.ipo_dates:
             raise ValueError(f"Ticker {symbol} not found in IPO dates.")
         
@@ -31,16 +73,15 @@ class DataLoader():
             ticker = yf.Ticker(symbol)
             ipo_date = self.ipo_dates.get(symbol)
             start_date = max(start, ipo_date)
-            data = ticker.history(start=start_date, end = end, interval=interval, auto_adjust=True)
+            data = ticker.history(start=start_date, end=end, interval=interval, auto_adjust=True)
             print(f"Fetched {len(data)} rows for {ticker.ticker} starting from {start_date} to {end if end else 'present'}")
             validated_data = self.validate_data(data, ticker.ticker)
             return validated_data
         except Exception as e:
             print(f"Error fetching data for {symbol}: {e}")
             return None
-    
 
-    def validate_data(self, data, symbol):
+    def validate_data(self, data: pd.DataFrame, symbol: str) -> Optional[pd.DataFrame]:
         required_columns = ['Open', 'High', 'Low', 'Close', 'Volume']
         
         if data is None or data.empty:
