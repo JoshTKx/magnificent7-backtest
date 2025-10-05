@@ -12,8 +12,12 @@ from typing import List, Dict, Tuple, Any
 import matplotlib.pyplot as plt
 import seaborn as sns
 
-from src.backtest import BacktestEngine
-from .constants import TradingConstants
+try:
+    from .constants import TradingConstants
+    from .backtest import BacktestEngine
+except ImportError:
+    from src.constants import TradingConstants
+    from src.backtest import BacktestEngine
 
 
 class SensitivityAnalysis:

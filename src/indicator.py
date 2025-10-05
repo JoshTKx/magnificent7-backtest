@@ -9,7 +9,10 @@ import pandas as pd
 import numpy as np
 from typing import Dict, Optional
 
-from .constants import TradingConstants
+try:
+    from .constants import TradingConstants
+except ImportError:
+    from src.constants import TradingConstants
 
 
 class TechnicalIndicator:

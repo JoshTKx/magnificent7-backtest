@@ -11,10 +11,16 @@ from datetime import date
 from typing import Dict, List, Optional, Tuple, Any
 import pandas as pd
 
-from .constants import TradingConstants, ValidationConstants
-from .data_loader import DataLoader
-from .portfolio import Portfolio
-from .indicator import TechnicalIndicator
+try:
+    from .constants import TradingConstants, ValidationConstants
+    from .data_loader import DataLoader
+    from .portfolio import Portfolio
+    from .indicator import TechnicalIndicator
+except ImportError:
+    from src.constants import TradingConstants, ValidationConstants
+    from src.data_loader import DataLoader
+    from src.portfolio import Portfolio
+    from src.indicator import TechnicalIndicator
 
 
 class BacktestEngine:

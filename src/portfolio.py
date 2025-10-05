@@ -11,7 +11,10 @@ from datetime import date, timedelta
 from typing import Dict, List, Tuple, Optional, Any
 import math
 
-from .constants import TradingConstants
+try:
+    from .constants import TradingConstants
+except ImportError:
+    from src.constants import TradingConstants
 
 
 class Portfolio:

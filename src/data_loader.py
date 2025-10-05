@@ -10,7 +10,10 @@ from functools import reduce
 from typing import Dict, Optional, List
 import pandas as pd
 
-from .constants import TradingConstants, ValidationConstants
+try:
+    from .constants import TradingConstants, ValidationConstants
+except ImportError:
+    from src.constants import TradingConstants, ValidationConstants
 
 
 class DataLoader:
